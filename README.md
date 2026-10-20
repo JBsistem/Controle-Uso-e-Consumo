@@ -12,7 +12,7 @@ Aplicação de controle de solicitações e propostas de compra feita com HTML, 
 6. No Firestore, abra a aba **Regras**, publique o conteúdo do arquivo `firestore.rules`.
 7. Em Authentication > Settings > Authorized domains, adicione o domínio onde o site ficará hospedado.
 
-Os registros são armazenados em `users/{uid}/expenses`; as regras permitem que cada sessão anônima consulte, crie e exclua somente os próprios registros. Assim, os dados não ficam públicos. A sessão e os registros estão associados ao navegador em que foram criados; ao usar outro navegador ou limpar os dados do navegador, a sessão e o acesso aos registros anteriores podem se perder.
+Os registros são armazenados em `users/{uid}/expenses`; as regras permitem que cada sessão anônima consulte, crie, edite e exclua somente os próprios registros. Assim, os dados não ficam públicos. A sessão e os registros estão associados ao navegador em que foram criados; ao usar outro navegador ou limpar os dados do navegador, a sessão e o acesso aos registros anteriores podem se perder.
 
 ## Executar localmente
 
@@ -30,6 +30,7 @@ Depois, acesse o endereço local informado pelo servidor.
 - Os mesmos dados para a proposta do comprador.
 - Relatório mensal ou anual, com totais solicitados, totais propostos e diferença.
 - Consolidação por produto no período escolhido.
-- Histórico com opção de excluir registros.
+- Histórico com opção de editar e excluir registros.
+- Exportação CSV do período mensal ou anual selecionado.
 
-Os campos de link são opcionais. A data é obrigatória para que os relatórios mensais e anuais funcionem.
+Os campos de link são opcionais. A data é obrigatória para que os relatórios mensais e anuais funcionem. Os valores aceitam vírgula ou ponto decimal com até duas casas; por exemplo, `123,45`. Eles são armazenados em centavos inteiros para manter a precisão dos totais.

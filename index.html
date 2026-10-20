@@ -79,7 +79,7 @@
               </label>
               <label class="field">
                 <span>Valor solicitado (R$)</span>
-                <input name="requesterValue" type="number" min="0" step="0.01" placeholder="0,00" required>
+                <input name="requesterValue" type="text" inputmode="decimal" maxlength="16" placeholder="0,00" autocomplete="off" required>
               </label>
             </fieldset>
 
@@ -109,12 +109,13 @@
               </label>
               <label class="field">
                 <span>Valor da proposta (R$)</span>
-                <input name="buyerValue" type="number" min="0" step="0.01" placeholder="0,00" required>
+                <input name="buyerValue" type="text" inputmode="decimal" maxlength="16" placeholder="0,00" autocomplete="off" required>
               </label>
             </fieldset>
           </div>
           <div class="form-actions">
             <p id="form-message" class="feedback" role="status" aria-live="polite"></p>
+            <button id="cancel-edit-button" class="button button-quiet hidden" type="button">Cancelar edição</button>
             <button id="save-button" class="button button-primary" type="submit">Salvar comparativo <span aria-hidden="true">→</span></button>
           </div>
         </form>
@@ -168,7 +169,10 @@
               <h3>Comparativo por produto</h3>
               <p class="muted">Valores somados no período selecionado.</p>
             </div>
-            <span id="report-count" class="count-label">0 registros</span>
+            <div class="report-actions">
+              <span id="report-count" class="count-label">0 registros</span>
+              <button id="export-report-button" class="button button-quiet" type="button">Exportar CSV</button>
+            </div>
           </div>
           <div class="table-scroll">
             <table>
