@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#f5f7f4">
+  <title>Controle de Gastos | Uso e Consumo</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <main class="page-shell">
+    <header class="topbar">
+      <a class="brand" href="#" aria-label="Controle de Gastos Uso e Consumo">
+        <span class="brand-mark" aria-hidden="true">C</span>
+        <span>
+          <strong>Controle de Gastos</strong>
+          <small>Uso e Consumo</small>
+        </span>
+      </a>
+    </header>
+
+    <section id="app-view">
+      <div class="welcome-row">
+        <div>
+          <span class="eyebrow">PAINEL DE COMPRAS</span>
+          <h1>Uso e Consumo</h1>
+          <p class="muted">Acompanhe solicitações, propostas e valores consolidados.</p>
+        </div>
+      </div>
+
+      <nav class="tabs" aria-label="Seções do controle">
+        <button class="tab-button active" type="button" data-tab="registro">Novo comparativo</button>
+        <button class="tab-button" type="button" data-tab="relatorios">Relatórios</button>
+        <button class="tab-button" type="button" data-tab="historico">Registros</button>
+      </nav>
+
+      <section id="registro-panel" class="tab-panel">
+        <div class="section-heading">
+          <div>
+            <span class="eyebrow">NOVO REGISTRO</span>
+            <h2>Solicitação e proposta</h2>
+            <p class="muted">Preencha os dados solicitados pelo setor e a proposta final do comprador.</p>
+          </div>
+        </div>
+
+        <form id="expense-form">
+          <div class="panel date-panel">
+            <label class="field date-field">
+              <span>Data do pedido</span>
+              <input id="entry-date" name="date" type="date" required>
+            </label>
+            <p class="muted">A data será usada para agrupar os relatórios por mês e ano.</p>
+          </div>
+
+          <div class="comparison-grid">
+            <fieldset class="panel comparison-card requester-card">
+              <legend class="comparison-heading">
+                <span class="comparison-icon requester-icon" aria-hidden="true">01</span>
+                <span>
+                  <strong>Solicitação do setor</strong>
+                  <small>O que foi solicitado</small>
+                </span>
+              </legend>
+              <label class="field">
+                <span>Setor solicitante</span>
+                <input name="requesterSector" type="text" maxlength="120" placeholder="Ex.: Administrativo" required>
+              </label>
+              <label class="field">
+                <span>Site / unidade</span>
+                <input name="requesterSite" type="text" maxlength="160" placeholder="Ex.: Unidade Centro" required>
+              </label>
+              <label class="field">
+                <span>Link recebido</span>
+                <input name="requesterLink" type="url" placeholder="https://..." inputmode="url">
+              </label>
+              <label class="field">
+                <span>Produto</span>
+                <input name="requesterProduct" type="text" maxlength="160" placeholder="Nome do produto" required>
+              </label>
+              <label class="field">
+                <span>Valor solicitado (R$)</span>
+                <input name="requesterValue" type="number" min="0" step="0.01" placeholder="0,00" required>
+              </label>
+            </fieldset>
+
+            <fieldset class="panel comparison-card buyer-card">
+              <legend class="comparison-heading">
+                <span class="comparison-icon buyer-icon" aria-hidden="true">02</span>
+                <span>
+                  <strong>Proposta do comprador</strong>
+                  <small>O que será comprado</small>
+                </span>
+              </legend>
+              <label class="field">
+                <span>Setor solicitante</span>
+                <input name="buyerSector" type="text" maxlength="120" placeholder="Ex.: Administrativo" required>
+              </label>
+              <label class="field">
+                <span>Site / unidade</span>
+                <input name="buyerSite" type="text" maxlength="160" placeholder="Ex.: Unidade Centro" required>
+              </label>
+              <label class="field">
+                <span>Link da proposta</span>
+                <input name="buyerLink" type="url" placeholder="https://..." inputmode="url">
+              </label>
+              <label class="field">
+                <span>Produto proposto</span>
+                <input name="buyerProduct" type="text" maxlength="160" placeholder="Nome do produto" required>
+              </label>
+              <label class="field">
+                <span>Valor da proposta (R$)</span>
+                <input name="buyerValue" type="number" min="0" step="0.01" placeholder="0,00" required>
+              </label>
+            </fieldset>
+          </div>
+          <div class="form-actions">
+            <p id="form-message" class="feedback" role="status" aria-live="polite"></p>
+            <button id="save-button" class="button button-primary" type="submit">Salvar comparativo <span aria-hidden="true">→</span></button>
+          </div>
+        </form>
+      </section>
+
+      <section id="relatorios-panel" class="tab-panel hidden">
+        <div class="section-heading">
+          <div>
+            <span class="eyebrow">VISÃO FINANCEIRA</span>
+            <h2>Relatórios</h2>
+            <p class="muted">Compare o valor solicitado com a proposta final, por período e produto.</p>
+          </div>
+        </div>
+        <div class="panel report-controls">
+          <label class="field report-type-field">
+            <span>Período do relatório</span>
+            <select id="report-type">
+              <option value="month">Mensal</option>
+              <option value="year">Anual</option>
+            </select>
+          </label>
+          <label class="field" id="month-control">
+            <span>Mês</span>
+            <input id="report-month" type="month">
+          </label>
+          <label class="field hidden" id="year-control">
+            <span>Ano</span>
+            <input id="report-year" type="number" min="2000" max="2100" step="1">
+          </label>
+        </div>
+        <div class="summary-grid">
+          <article class="summary-card">
+            <span>Valor solicitado</span>
+            <strong id="requested-total">R$ 0,00</strong>
+            <small>Conforme os setores</small>
+          </article>
+          <article class="summary-card">
+            <span>Proposta final</span>
+            <strong id="proposal-total">R$ 0,00</strong>
+            <small>Conforme o comprador</small>
+          </article>
+          <article class="summary-card savings-card">
+            <span>Diferença</span>
+            <strong id="difference-total">R$ 0,00</strong>
+            <small id="difference-caption">Solicitado menos proposta</small>
+          </article>
+        </div>
+        <div class="panel table-panel">
+          <div class="table-heading">
+            <div>
+              <h3>Comparativo por produto</h3>
+              <p class="muted">Valores somados no período selecionado.</p>
+            </div>
+            <span id="report-count" class="count-label">0 registros</span>
+          </div>
+          <div class="table-scroll">
+            <table>
+              <thead>
+                <tr>
+                  <th>Produto</th>
+                  <th>Solicitado</th>
+                  <th>Proposta</th>
+                  <th>Diferença</th>
+                </tr>
+              </thead>
+              <tbody id="report-table-body"></tbody>
+            </table>
+          </div>
+          <p id="report-empty" class="empty-state">Ainda não há registros para este período.</p>
+        </div>
+      </section>
+
+      <section id="historico-panel" class="tab-panel hidden">
+        <div class="section-heading">
+          <div>
+            <span class="eyebrow">ACOMPANHAMENTO</span>
+            <h2>Registros salvos</h2>
+            <p class="muted">Consulte ou remova comparativos da sua conta.</p>
+          </div>
+          <span id="history-count" class="count-label">0 registros</span>
+        </div>
+        <div id="history-list" class="history-list"></div>
+        <p id="history-empty" class="panel empty-state">Nenhum comparativo salvo ainda.</p>
+      </section>
+      <p id="data-message" class="feedback data-feedback" role="status" aria-live="polite"></p>
+    </section>
+  </main>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>
