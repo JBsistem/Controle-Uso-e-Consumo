@@ -56,13 +56,7 @@ function setFeedback(element, message = '', type = '') {
   element.classList.toggle('success', type === 'success');
 }
 
-function csvCell(value) {
-  let text = String(value ?? '');
-  if (/^[\s]*[=+\-@\t\r]/.test(text)) text = `'${text}`;
-  return `"${text.replace(/"/g, '""')}"`;
-}
-
-function exportReport() {
+async function exportReport() {
   const periodExpenses = getPeriodExpenses();
   if (periodExpenses.length === 0) {
     setFeedback(dataMessage, 'Não há registros no período selecionado para exportar.', 'error');
@@ -70,69 +64,38 @@ function exportReport() {
   }
 
   const periodName = reportType.value === 'month' ? reportMonth.value : reportYear.value;
-  const periodLabel = reportType.value === 'month' ? 'Mensal' : 'Anual';
+  const isMonthly = reportType.value === 'month';
   const requestedTotal = periodExpenses.reduce((sum, expense) => sum + getRecordCents(expense.requester), 0);
   const proposalTotal = periodExpenses.reduce((sum, expense) => sum + getRecordCents(expense.buyer), 0);
+  const periodTitle = isMonthly
+    ? `${new Intl.DateTimeFormat('pt-BR', { month: 'long', timeZone: 'UTC' })
+      .format(new Date(`${periodName}-01T00:00:00Z`)).toLocaleUpperCase('pt-BR')} DE ${periodName.slice(0, 4)}`
+    : periodName;
   const rows = [
-    ['Relatório', periodLabel, periodName],
-    [],
-    ['Data', 'Setor solicitante', 'Site solicitante', 'Link recebido', 'Produto solicitado', 'Valor solicitado',
-      'Setor comprador', 'Site da proposta', 'Link da proposta', 'Produto proposto', 'Valor da proposta', 'Diferença']
+    [isMonthly ? 'MÊS/ANO' : 'ANO', 'VALOR SOLICITADO', 'VALOR DA COMPRA FINAL', 'DIFERENÇA'],
+    [periodTitle, requestedTotal / 100, proposalTotal / 100, (requestedTotal - proposalTotal) / 100]
   ];
 
-  for (const expense of periodExpenses) {
-    rows.push([
-      formatDate(expense.date),
-      expense.requester?.sector,
-      expense.requester?.site,
-      expense.requester?.link,
-      expense.requester?.product,
-      formatCents(getRecordCents(expense.requester)),
-      expense.buyer?.sector,
-      expense.buyer?.site,
-      expense.buyer?.link,
-      expense.buyer?.product,
-      formatCents(getRecordCents(expense.buyer)),
-      formatCents(getRecordCents(expense.requester) - getRecordCents(expense.buyer))
-    ]);
+  exportReportButton.disabled = true;
+  setFeedback(dataMessage, 'Preparando planilha Excel...');
+  try {
+    const XLSX = await import('https://cdn.jsdelivr.net/npm/xlsx@0.18.5/+esm');
+    const worksheet = XLSX.utils.aoa_to_sheet(rows);
+    worksheet['!cols'] = [
+      { wch: 24 },
+      { wch: 20 },
+      { wch: 26 },
+      { wch: 16 }
+    ];
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Relatório');
+    XLSX.writeFile(workbook, `relatorio-${isMonthly ? 'mensal' : 'anual'}-${periodName}.xlsx`);
+    setFeedback(dataMessage, `Planilha ${isMonthly ? 'mensal' : 'anual'} exportada.`, 'success');
+  } catch (error) {
+    setFeedback(dataMessage, `Não foi possível gerar o Excel: ${error.message}`, 'error');
+  } finally {
+    exportReportButton.disabled = false;
   }
-  const products = new Map();
-  for (const expense of periodExpenses) {
-    const product = String(expense.requester?.product || expense.buyer?.product || 'Produto sem nome').trim();
-    const key = product.toLocaleLowerCase('pt-BR');
-    const totals = products.get(key) || { product, requested: 0, proposal: 0 };
-    totals.requested += getRecordCents(expense.requester);
-    totals.proposal += getRecordCents(expense.buyer);
-    products.set(key, totals);
-  }
-  rows.push(
-    [],
-    ['Comparativo por produto'],
-    ['Produto', 'Solicitado', 'Proposta', 'Diferença'],
-    ...[...products.values()]
-      .sort((left, right) => left.product.localeCompare(right.product, 'pt-BR'))
-      .map((totals) => [
-        totals.product,
-        formatCents(totals.requested),
-        formatCents(totals.proposal),
-        formatCents(totals.requested - totals.proposal)
-      ]),
-    [],
-    ['Totais do período', '', '', '', '', formatCents(requestedTotal), '', '', '', '', formatCents(proposalTotal),
-      formatCents(requestedTotal - proposalTotal)]
-  );
-
-  const csv = `\uFEFF${rows.map((row) => row.map(csvCell).join(';')).join('\r\n')}`;
-  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = `relatorio-${reportType.value === 'month' ? 'mensal' : 'anual'}-${periodName}.csv`;
-  document.body.append(link);
-  link.click();
-  link.remove();
-  URL.revokeObjectURL(url);
-  setFeedback(dataMessage, `Relatório ${periodLabel.toLowerCase()} exportado.`, 'success');
 }
 
 function getFriendlyError(error) {

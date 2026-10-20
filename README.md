@@ -33,6 +33,6 @@ Depois, acesse o endereço local informado pelo servidor.
 - Relatório mensal ou anual, com totais solicitados, totais propostos e diferença.
 - Consolidação por produto no período escolhido.
 - Histórico com opção de editar e excluir registros.
-- Exportação CSV do período mensal ou anual selecionado.
+- Exportação Excel (`.xlsx`) em formato de resumo: `MÊS/ANO` ou `ANO`, `VALOR SOLICITADO`, `VALOR DA COMPRA FINAL` e `DIFERENÇA`.
 
 Os campos de link são opcionais. A data é obrigatória para que os relatórios mensais e anuais funcionem. Os valores aceitam vírgula ou ponto decimal com até duas casas; por exemplo, `123,45`. Eles são armazenados em centavos inteiros para manter a precisão dos totais.
