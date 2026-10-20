@@ -1,18 +1,12 @@
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
 import {
-  getAuth,
-  onAuthStateChanged,
-  signInAnonymously
-} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
-import {
   addDoc,
   collection,
+  collectionGroup,
   deleteDoc,
   doc,
   getFirestore,
   onSnapshot,
-  orderBy,
-  query,
   serverTimestamp,
   updateDoc
 } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
@@ -40,12 +34,10 @@ const firebaseConfigured = firebaseConfig.apiKey !== 'SUA_API_KEY'
   && firebaseConfig.projectId !== 'SEU_PROJECT_ID'
   && firebaseConfig.appId !== 'SEU_APP_ID';
 
-let auth;
 let db;
 let unsubscribeExpenses;
 let expenses = [];
-let activeUserId;
-let editingExpenseId;
+let editingExpensePath;
 
 const currency = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
 const dateFormatter = new Intl.DateTimeFormat('pt-BR', { dateStyle: 'medium', timeZone: 'UTC' });
@@ -145,16 +137,14 @@ function exportReport() {
 
 function getFriendlyError(error) {
   const messages = {
-    'auth/operation-not-allowed': 'Habilite o provedor Anônimo em Authentication > Sign-in method no Firebase.',
-    'auth/admin-restricted-operation': 'O Firebase bloqueou o acesso anônimo. Habilite o provedor Anônimo em Authentication > Sign-in method.',
     'permission-denied': 'Acesso negado. Confira as regras do Firestore.',
     'unavailable': 'Firebase indisponível no momento. Verifique sua conexão.'
   };
   return messages[error.code] || `Não foi possível concluir a operação: ${error.message}`;
 }
 
-function getExpensesCollection(userId) {
-  return collection(db, 'users', userId, 'expenses');
+function getExpensesCollection() {
+  return collection(db, 'expenses');
 }
 
 function isAllowedLink(value) {
@@ -322,7 +312,7 @@ function renderHistory() {
     removeButton.type = 'button';
     removeButton.textContent = 'Excluir';
     removeButton.setAttribute('aria-label', `Excluir registro de ${expense.requester?.product || 'produto'}`);
-    removeButton.addEventListener('click', () => removeExpense(expense.id, removeButton));
+    removeButton.addEventListener('click', () => removeExpense(expense.documentPath, removeButton));
     actions.append(removeButton);
 
     card.append(date, requester, buyer, actions);
@@ -332,7 +322,7 @@ function renderHistory() {
 
 function resetExpenseForm() {
   expenseForm.reset();
-  editingExpenseId = undefined;
+  editingExpensePath = undefined;
   document.querySelector('#entry-date').value = [
     currentDate.getFullYear(),
     String(currentDate.getMonth() + 1).padStart(2, '0'),
@@ -344,7 +334,7 @@ function resetExpenseForm() {
 }
 
 function editExpense(expense) {
-  editingExpenseId = expense.id;
+  editingExpensePath = expense.documentPath;
   const values = {
     date: expense.date,
     requesterSector: expense.requester?.sector,
@@ -373,13 +363,16 @@ function editExpense(expense) {
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
-function watchExpenses(userId) {
+function watchExpenses() {
   if (unsubscribeExpenses) unsubscribeExpenses();
-  activeUserId = userId;
-  setFeedback(dataMessage, 'Carregando seus registros...');
-  const expensesQuery = query(getExpensesCollection(userId), orderBy('date', 'desc'));
+  setFeedback(dataMessage, 'Carregando registros compartilhados...');
+  const expensesQuery = collectionGroup(db, 'expenses');
   unsubscribeExpenses = onSnapshot(expensesQuery, (snapshot) => {
-    expenses = snapshot.docs.map((item) => ({ id: item.id, ...item.data() }));
+    expenses = snapshot.docs.map((item) => ({
+      id: item.id,
+      documentPath: item.ref.path,
+      ...item.data()
+    })).sort((left, right) => String(right.date || '').localeCompare(String(left.date || '')));
     renderHistory();
     renderReport();
     setFeedback(dataMessage);
@@ -388,12 +381,13 @@ function watchExpenses(userId) {
   });
 }
 
-async function removeExpense(expenseId, button) {
-  if (!activeUserId || !window.confirm('Deseja excluir este comparativo? Esta ação não pode ser desfeita.')) return;
+async function removeExpense(documentPath, button) {
+  const expense = expenses.find((item) => item.documentPath === documentPath);
+  if (!expense || !window.confirm('Deseja excluir este comparativo? Esta ação não pode ser desfeita.')) return;
   button.disabled = true;
   setFeedback(dataMessage);
   try {
-    await deleteDoc(doc(db, 'users', activeUserId, 'expenses', expenseId));
+    await deleteDoc(doc(db, documentPath));
     setFeedback(dataMessage, 'Registro excluído.', 'success');
   } catch (error) {
     button.disabled = false;
@@ -411,8 +405,8 @@ document.querySelectorAll('.tab-button').forEach((button) => {
 
 expenseForm.addEventListener('submit', async (event) => {
   event.preventDefault();
-  if (!activeUserId) {
-    setFeedback(formMessage, 'A conexão ainda está sendo preparada. Aguarde e tente novamente.', 'error');
+  if (!db) {
+    setFeedback(formMessage, 'Configure o Firebase para salvar os registros. Consulte o README.', 'error');
     return;
   }
 
@@ -449,14 +443,16 @@ expenseForm.addEventListener('submit', async (event) => {
   };
 
   saveButton.disabled = true;
-  setFeedback(formMessage, editingExpenseId ? 'Atualizando comparativo...' : 'Salvando comparativo...');
+  setFeedback(formMessage, editingExpensePath ? 'Atualizando comparativo...' : 'Salvando comparativo...');
   try {
-    if (editingExpenseId) {
-      await updateDoc(doc(db, 'users', activeUserId, 'expenses', editingExpenseId), entry);
+    if (editingExpensePath) {
+      const expense = expenses.find((item) => item.documentPath === editingExpensePath);
+      if (!expense) throw new Error('O registro não foi encontrado na lista compartilhada. Atualize a página e tente novamente.');
+      await updateDoc(doc(db, editingExpensePath), entry);
       resetExpenseForm();
       setFeedback(formMessage, 'Comparativo atualizado com sucesso.', 'success');
     } else {
-      await addDoc(getExpensesCollection(activeUserId), entry);
+      await addDoc(getExpensesCollection(), entry);
       resetExpenseForm();
       setFeedback(formMessage, 'Comparativo salvo com sucesso.', 'success');
     }
@@ -494,20 +490,8 @@ if (!firebaseConfigured) {
 if (firebaseConfigured) {
   try {
     const firebaseApp = initializeApp(firebaseConfig);
-    auth = getAuth(firebaseApp);
     db = getFirestore(firebaseApp);
-    onAuthStateChanged(auth, (user) => {
-      if (user) {
-        watchExpenses(user.uid);
-      } else {
-        setFeedback(dataMessage, 'Preparando acesso seguro...');
-        signInAnonymously(auth).catch((error) => {
-          setFeedback(dataMessage, getFriendlyError(error), 'error');
-        });
-      }
-    }, (error) => {
-      setFeedback(dataMessage, getFriendlyError(error), 'error');
-    });
+    watchExpenses();
   } catch (error) {
     setFeedback(dataMessage, `Erro ao iniciar o Firebase: ${error.message}`, 'error');
   }
