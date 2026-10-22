@@ -22,6 +22,7 @@ const historyCount = document.querySelector('#history-count');
 const reportType = document.querySelector('#report-type');
 const reportMonth = document.querySelector('#report-month');
 const reportYear = document.querySelector('#report-year');
+const reportSector = document.querySelector('#report-sector');
 const monthControl = document.querySelector('#month-control');
 const yearControl = document.querySelector('#year-control');
 const reportTableBody = document.querySelector('#report-table-body');
@@ -72,8 +73,17 @@ async function exportReport() {
       .format(new Date(`${periodName}-01T00:00:00Z`)).toLocaleUpperCase('pt-BR')} DE ${periodName.slice(0, 4)}`
     : periodName;
   const rows = [
-    [isMonthly ? 'MÊS/ANO' : 'ANO', 'VALOR SOLICITADO', 'VALOR DA COMPRA FINAL', 'DIFERENÇA'],
-    [periodTitle, requestedTotal / 100, proposalTotal / 100, (requestedTotal - proposalTotal) / 100]
+    [isMonthly ? 'MÊS/ANO' : 'ANO', 'SETOR SOLICITANTE', 'PROPOSTA INICIAL', 'VALOR DA COMPRA FINAL', 'VALOR ECONOMIZADO'],
+    [periodTitle, reportSector.selectedOptions[0].textContent, requestedTotal / 100, proposalTotal / 100, (requestedTotal - proposalTotal) / 100],
+    [],
+    ['SETOR SOLICITANTE', 'PRODUTO', 'PROPOSTA INICIAL', 'VALOR DA COMPRA FINAL', 'VALOR ECONOMIZADO'],
+    ...getReportProductRows(periodExpenses).map((row) => [
+      row.sector,
+      row.product,
+      row.requested / 100,
+      row.proposal / 100,
+      (row.requested - row.proposal) / 100
+    ])
   ];
 
   exportReportButton.disabled = true;
@@ -84,8 +94,9 @@ async function exportReport() {
     worksheet['!cols'] = [
       { wch: 24 },
       { wch: 20 },
+      { wch: 20 },
       { wch: 26 },
-      { wch: 16 }
+      { wch: 20 }
     ];
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, 'Relatório');
@@ -156,12 +167,34 @@ function formatInputCents(cents) {
 }
 
 function getPeriodExpenses() {
+  let periodExpenses;
   if (reportType.value === 'month') {
     const prefix = reportMonth.value;
-    return prefix ? expenses.filter((expense) => expense.date?.startsWith(`${prefix}-`)) : [];
+    periodExpenses = prefix ? expenses.filter((expense) => expense.date?.startsWith(`${prefix}-`)) : [];
+  } else {
+    const year = reportYear.value;
+    periodExpenses = year ? expenses.filter((expense) => expense.date?.startsWith(`${year}-`)) : [];
   }
-  const year = reportYear.value;
-  return year ? expenses.filter((expense) => expense.date?.startsWith(`${year}-`)) : [];
+  const sector = reportSector.value.trim().toLocaleLowerCase('pt-BR');
+  return sector
+    ? periodExpenses.filter((expense) => (String(expense.requester?.sector || '').trim() || 'Setor não informado')
+      .toLocaleLowerCase('pt-BR') === sector)
+    : periodExpenses;
+}
+
+function getReportProductRows(periodExpenses) {
+  const byProduct = new Map();
+  for (const expense of periodExpenses) {
+    const sector = String(expense.requester?.sector || '').trim() || 'Setor não informado';
+    const product = String(expense.requester?.product || expense.buyer?.product || 'Produto sem nome').trim();
+    const key = `${sector.toLocaleLowerCase('pt-BR')}\0${product.toLocaleLowerCase('pt-BR')}`;
+    const row = byProduct.get(key) || { sector, product, requested: 0, proposal: 0 };
+    row.requested += getRecordCents(expense.requester);
+    row.proposal += getRecordCents(expense.buyer);
+    byProduct.set(key, row);
+  }
+  return [...byProduct.values()].sort((left, right) =>
+    left.sector.localeCompare(right.sector, 'pt-BR') || left.product.localeCompare(right.product, 'pt-BR'));
 }
 
 function renderReport() {
@@ -174,25 +207,16 @@ function renderReport() {
   document.querySelector('#proposal-total').textContent = formatCents(proposalTotal);
   document.querySelector('#difference-total').textContent = formatCents(difference);
   document.querySelector('#difference-caption').textContent = difference >= 0
-    ? 'Economia em relação ao solicitado'
-    : 'Proposta acima do valor solicitado';
+    ? 'Proposta inicial menos valor da compra final'
+    : 'Compra final acima da proposta inicial';
   document.querySelector('.savings-card').classList.toggle('negative', difference < 0);
   reportCount.textContent = `${periodExpenses.length} ${periodExpenses.length === 1 ? 'registro' : 'registros'}`;
 
-  const byProduct = new Map();
-  for (const expense of periodExpenses) {
-    const product = String(expense.requester?.product || expense.buyer?.product || 'Produto sem nome').trim();
-    const key = product.toLocaleLowerCase('pt-BR');
-    const row = byProduct.get(key) || { product, requested: 0, proposal: 0 };
-    row.requested += getRecordCents(expense.requester);
-    row.proposal += getRecordCents(expense.buyer);
-    byProduct.set(key, row);
-  }
-
   reportTableBody.replaceChildren();
-  for (const row of [...byProduct.values()].sort((a, b) => a.product.localeCompare(b.product, 'pt-BR'))) {
+  for (const row of getReportProductRows(periodExpenses)) {
     const tableRow = document.createElement('tr');
     const values = [
+      row.sector,
       row.product,
       formatCents(row.requested),
       formatCents(row.proposal),
@@ -201,7 +225,7 @@ function renderReport() {
     values.forEach((value, index) => {
       const cell = document.createElement('td');
       cell.textContent = value;
-      if (index === 3) {
+      if (index === 4) {
         cell.classList.add(row.requested - row.proposal < 0 ? 'negative-value' : 'positive-value');
       }
       tableRow.append(cell);
@@ -251,11 +275,11 @@ function renderHistory() {
     date.textContent = formatDate(expense.date);
 
     const requester = createHistoryProduct(
-      `Solicitado · ${expense.requester?.sector || 'Setor não informado'}`,
+      `Proposta inicial · ${expense.requester?.sector || 'Setor não informado'}`,
       expense.requester
     );
     const buyer = createHistoryProduct(
-      `Proposta · ${expense.buyer?.sector || 'Setor não informado'}`,
+      `Compra final · ${expense.buyer?.sector || 'Setor não informado'}`,
       expense.buyer
     );
 
@@ -336,12 +360,29 @@ function watchExpenses() {
       documentPath: item.ref.path,
       ...item.data()
     })).sort((left, right) => String(right.date || '').localeCompare(String(left.date || '')));
+    updateReportSectors();
     renderHistory();
     renderReport();
     setFeedback(dataMessage);
   }, (error) => {
     setFeedback(dataMessage, getFriendlyError(error), 'error');
   });
+}
+
+function updateReportSectors() {
+  const selectedSector = reportSector.value;
+  const sectors = [...new Set(expenses
+    .map((expense) => String(expense.requester?.sector || '').trim())
+    .filter(Boolean))]
+    .sort((left, right) => left.localeCompare(right, 'pt-BR'));
+  reportSector.replaceChildren(new Option('Todos os setores', ''));
+  for (const sector of sectors) reportSector.add(new Option(sector, sector));
+  const hasUnassignedSector = expenses.some((expense) => !String(expense.requester?.sector || '').trim());
+  if (hasUnassignedSector) reportSector.add(new Option('Setor não informado', 'Setor não informado'));
+  const matchingSector = sectors.find((sector) => sector.toLocaleLowerCase('pt-BR')
+    === selectedSector.toLocaleLowerCase('pt-BR'));
+  reportSector.value = matchingSector || (hasUnassignedSector
+    && selectedSector.toLocaleLowerCase('pt-BR') === 'setor não informado' ? 'Setor não informado' : '');
 }
 
 async function removeExpense(documentPath, button) {
@@ -444,6 +485,7 @@ reportType.addEventListener('change', () => {
 
 reportMonth.addEventListener('input', renderReport);
 reportYear.addEventListener('input', renderReport);
+reportSector.addEventListener('change', renderReport);
 exportReportButton.addEventListener('click', exportReport);
 
 if (!firebaseConfigured) {

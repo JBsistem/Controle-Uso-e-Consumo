@@ -28,11 +28,11 @@ Depois, acesse o endereço local informado pelo servidor.
 
 ## O que o site registra e calcula
 
-- Data do pedido, setor solicitante, site/unidade, link, produto e valor solicitado.
-- Os mesmos dados para a proposta do comprador.
-- Relatório mensal ou anual, com totais solicitados, totais propostos e diferença.
-- Consolidação por produto no período escolhido.
+- Data do pedido, setor solicitante, site/unidade, link, produto e proposta inicial.
+- Os mesmos dados para a compra final.
+- Relatório mensal ou anual, com totais da proposta inicial, valores da compra final e valor economizado.
+- Consolidação por setor solicitante e produto no período escolhido, com filtro por setor.
 - Histórico com opção de editar e excluir registros.
-- Exportação Excel (`.xlsx`) em formato de resumo: `MÊS/ANO` ou `ANO`, `VALOR SOLICITADO`, `VALOR DA COMPRA FINAL` e `DIFERENÇA`.
+- Exportação Excel (`.xlsx`) do resumo e dos produtos do período e setor selecionados, com proposta inicial, valor da compra final e valor economizado.
 
 Os campos de link são opcionais. A data é obrigatória para que os relatórios mensais e anuais funcionem. Os valores aceitam vírgula ou ponto decimal com até duas casas; por exemplo, `123,45`. Eles são armazenados em centavos inteiros para manter a precisão dos totais.
